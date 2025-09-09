@@ -1,0 +1,199 @@
+import { StackFrame, FormatOptions, Warning } from '@/types';
+import { CodeFrame } from '@/infrastructure/file-system';
+
+/**
+ * Advanced formatter that creates highly structured, informative output
+ * Separates error analysis, code frames, call chain, and hidden frame summaries
+ */
+export class AdvancedFormatter {
+
+  constructor(private options: FormatOptions = {}) {}
+
+  /**
+   * Format error in advanced structured style
+   */
+  formatError(
+    error: Error,
+    frames: readonly StackFrame[],
+    codeFrames: readonly (CodeFrame | null)[],
+    warnings: readonly Warning[] = []
+  ): string {
+    const sections: string[] = [];
+
+    // 1. Error header with property analysis
+    sections.push(this.formatErrorHeader(error, frames));
+
+    // 2. Code frame section (if available)
+    const codeFrameSection = this.formatCodeFrameSection(frames, codeFrames);
+    if (codeFrameSection) {
+      sections.push(codeFrameSection);
+    }
+
+    // 3. Call chain (async app frames only)
+    const callChainSection = this.formatCallChain(frames);
+    if (callChainSection) {
+      sections.push(callChainSection);
+    }
+
+    // 4. Hidden frames summary
+    const hiddenSection = this.formatHiddenFrames(frames);
+    if (hiddenSection) {
+      sections.push(hiddenSection);
+    }
+
+    return sections.join('\n\n');
+  }
+
+  private formatErrorHeader(error: Error, frames: readonly StackFrame[]): string {
+    const icon = '✖';
+    const errorName = error.constructor.name;
+    const message = error.message;
+    
+    let result = `${icon} ${errorName}: ${message}`;
+
+    // Add property analysis for property access errors
+    if (message.includes('Cannot read properties of undefined') || message.includes('Cannot read property')) {
+      const propertyMatch = message.match(/reading '([^']+)'/);
+      const property = propertyMatch?.[1];
+      
+      if (property) {
+        const location = frames.find(f => f.type === 'app');
+        
+        result += `\n\n  Attempted to access property on undefined value:`;
+        result += `\n  → ${property}`;
+        
+        if (location?.file && location.line) {
+          result += `\n\nLocation:`;
+          result += `\n  ${this.shortenPath(location.file)}:${location.line.toString()}`;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private formatCodeFrameSection(
+    frames: readonly StackFrame[],
+    codeFrames: readonly (CodeFrame | null)[]
+  ): string | null {
+    // Find the first app frame with a code frame
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
+      const codeFrame = codeFrames[i];
+      
+      if (frame?.type === 'app' && codeFrame && codeFrame.lines.length > 0) {
+        return this.formatSingleCodeFrame(codeFrame);
+      }
+    }
+    return null;
+  }
+
+  private formatSingleCodeFrame(codeFrame: CodeFrame): string {
+    const lines = codeFrame.lines.map(line => {
+      const lineNumStr = line.number.toString().padStart(3);
+      const prefix = line.isTarget ? '>' : ' ';
+      const lineNum = `${lineNumStr} |`;
+      
+      if (line.isTarget) {
+        // Target line with caret
+        const content = line.content || '';
+        const indent = content.match(/^\s*/)?.[0] || '';
+        const caretLine = `${' '.repeat(6)}|${indent}^`;
+        
+        return [
+          `${prefix} ${lineNum} ${content}`,
+          caretLine
+        ].join('\n');
+      }
+      
+      return `  ${lineNum} ${line.content || ''}`;
+    }).join('\n');
+
+    return `Code frame:\n${lines}`;
+  }
+
+  private formatCallChain(frames: readonly StackFrame[]): string | null {
+    // Extract async app frames only
+    const appFrames = frames.filter(frame => 
+      frame.type === 'app' && 
+      frame.functionName && 
+      frame.file
+    ).slice(0, 5); // Limit to 5 most relevant
+
+    if (appFrames.length === 0) return null;
+
+    const chainItems = appFrames.map(frame => {
+      const func = frame.functionName || '<anonymous>';
+      const file = this.shortenPath(frame.file || '');
+      const location = frame.line && frame.column ? 
+        `${frame.line}:${frame.column}` : 
+        frame.line ? `${frame.line}` : '';
+      
+      return `  at ${func} (${file}:${location})`;
+    });
+
+    return `Call chain (async):\n${chainItems.join('\n')}`;
+  }
+
+  private formatHiddenFrames(frames: readonly StackFrame[]): string | null {
+    // Count hidden frames by type
+    const appFrames = frames.filter(f => f.type === 'app');
+    const nodeFrames = frames.filter(f => f.type === 'node');
+    const depsFrames = frames.filter(f => f.type === 'deps');
+    const nativeFrames = frames.filter(f => f.type === 'native');
+    
+    // Calculate hidden (we show max 5 app frames in call chain)
+    const hiddenApp = Math.max(0, appFrames.length - 5);
+    const hiddenNode = nodeFrames.length;
+    const hiddenDeps = depsFrames.length;
+    const hiddenNative = nativeFrames.length;
+
+    const parts: string[] = [];
+    
+    if (hiddenNode > 0) {
+      parts.push(`[${hiddenNode} Node internal frames hidden]`);
+    }
+    if (hiddenNative > 0) {
+      parts.push(`[${hiddenNative} Native frames hidden]`);
+    }
+    if (hiddenDeps > 0) {
+      parts.push(`[${hiddenDeps} Dependency frames hidden]`);
+    }
+    if (hiddenApp > 0) {
+      parts.push(`[${hiddenApp} Additional app frames hidden]`);
+    }
+
+    if (parts.length === 0) return null;
+
+    return `Stack (hidden frames):\n  ${parts.join('\n  ')}`;
+  }
+
+  private shortenPath(filePath: string): string {
+    if (!filePath) return '';
+
+    // Apply project root shortening
+    if (this.options.projectRoot) {
+      const relative = filePath.replace(this.options.projectRoot, '');
+      if (relative !== filePath) {
+        // Remove leading slash and return clean relative path
+        return relative.replace(/^\/+/, '');
+      }
+    }
+
+    // Fallback: show relative format
+    const parts = filePath.split('/');
+    if (parts.length > 3 && filePath.includes('/src/')) {
+      const srcIndex = parts.findIndex(p => p === 'src');
+      if (srcIndex > 0) {
+        return parts.slice(srcIndex).join('/');
+      }
+    }
+
+    // Last fallback: just filename and parent
+    if (parts.length > 2) {
+      return parts.slice(-2).join('/');
+    }
+
+    return filePath;
+  }
+}

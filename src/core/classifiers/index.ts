@@ -1,0 +1,1 @@
+export { FrameClassifier } from './frame-classifier';
