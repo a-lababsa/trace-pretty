@@ -62,7 +62,7 @@ export class TracePretty {
       await this.codeExtractor.extractFrames(resolvedFrames) :
       [];
 
-    // Format elegantly
+    // Format with advanced formatter
     const formattedText = this.formatter.formatError(
       error,
       resolvedFrames,

@@ -41,10 +41,6 @@ export interface StackFrame {
   readonly source?: string | undefined;
 }
 
-// Result wrapper for error handling
-export type Result<T, E = Error> = 
-  | { readonly success: true; readonly data: T }
-  | { readonly success: false; readonly error: E };
 
 // Parse result with warnings
 export interface ParseResult<T> {
@@ -74,15 +70,8 @@ export interface FormatResult {
 // Configuration options
 export interface FormatOptions {
   readonly codeFrame?: number | false;
-  readonly onlyApp?: boolean;
-  readonly hideDeps?: boolean;
-  readonly hideNode?: boolean;
-  readonly maxFrames?: number;
-  readonly redact?: readonly (string | RegExp)[];
   readonly fast?: boolean;
-  readonly strict?: boolean;
   readonly projectRoot?: string;
-  readonly sourceMapPaths?: readonly string[];
 }
 
 // Classification rules
@@ -93,17 +82,3 @@ export interface ClassificationRules {
   readonly nativePaths: readonly string[];
 }
 
-// Security configuration
-export interface SecurityConfig {
-  readonly enabled: boolean;
-  readonly patterns: readonly (string | RegExp)[];
-  readonly replacement: string;
-}
-
-// Performance monitoring
-export interface PerformanceMetrics {
-  readonly processingTime: number;
-  readonly memoryUsage: number;
-  readonly cacheHits: number;
-  readonly cacheMisses: number;
-}

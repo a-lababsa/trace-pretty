@@ -46,9 +46,7 @@ Stack (hidden frames):
 
   const tracePrettyAdvanced = new TracePretty({
     projectRoot: '/Users/alex/workspace/app',
-    codeFrame: 3,
-    hideDeps: false,
-    hideNode: false
+    codeFrame: 3
   });
 
   const result = await tracePrettyAdvanced.format(realTrace);
