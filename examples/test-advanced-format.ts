@@ -31,7 +31,7 @@ Stack trace: AppError: Error re-emitted by logger
 Caused by: AppError: Failed to fetch posts for user
     at getPostsForUser (/Users/alex/projet/services/post.service.ts:13:15)`);
  console.log(fastResult.text)
-
+console.log('\n\n')
  const test = await fastTest.format(`
 [LOGGER] message: Controller failed to get posts
 AppError: Controller failed to get posts

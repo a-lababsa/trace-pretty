@@ -1,13 +1,17 @@
 import { StackFrame, FormatOptions, Warning, ErrorInfo } from '@/types';
 import { CodeFrame } from '@/infrastructure/file-system';
+import { ColorTheme, getTheme } from '../../infrastructure/colors';
 
 /**
  * Advanced formatter that creates highly structured, informative output
  * Separates error analysis, code frames, call chain, and hidden frame summaries
  */
 export class AdvancedFormatter {
+  private theme: ColorTheme;
 
-  constructor(private options: FormatOptions = {}) {}
+  constructor(private options: FormatOptions = {}) {
+    this.theme = getTheme();
+  }
 
   /**
    * Format error in advanced structured style
@@ -58,31 +62,39 @@ export class AdvancedFormatter {
       return '';
     }
     
-    // 1. Primary error header
+    // 1. Primary error header (Rouge vif + gras)
     const primaryError = errors[0];
     if (!primaryError) return '';
     
     const mockError = new Error(primaryError.message);
     mockError.name = primaryError.name;
-    sections.push(this.formatErrorHeader(mockError, primaryError.frames));
+    const primaryErrorText = this.formatErrorHeaderPlain(mockError, primaryError.frames);
+    sections.push(this.theme.primaryError(primaryErrorText));
     
     // 2. Caused by chain (hierarchical)
     if (errors.length > 1) {
-      let causedBySection = 'Caused by:';
+      let causedBySection = this.theme.section('Caused by:');
       for (let i = 1; i < errors.length; i++) {
         const error = errors[i];
         if (!error) continue;
         
         const indent = '  '.repeat(i);
         const prefix = '└─ ';
-        causedBySection += `\n${indent}${prefix}${error.name}: ${error.message}`;
+        const errorText = `${error.name}: ${error.message}`;
+        
+        // Couleur selon la position : jaune pour intermédiaires, rouge pour la racine
+        const coloredError = i === errors.length - 1 
+          ? this.theme.rootError(errorText)  // Dernière erreur = erreur racine (rouge)
+          : this.theme.intermediateError(errorText);  // Erreurs intermédiaires (jaune)
+          
+        causedBySection += `\n${indent}${prefix}${coloredError}`;
       }
       sections.push(causedBySection);
     }
     
-    // 3. Location for primary error
+    // 3. Location for primary error (Cyan pour section + Gris pour chemin)
     if (primaryError.frames.length > 0) {
-      const locationSection = this.formatLocationSection(primaryError.frames);
+      const locationSection = this.formatLocationSectionColored(primaryError.frames);
       if (locationSection) {
         sections.push(locationSection);
       }
@@ -96,16 +108,16 @@ export class AdvancedFormatter {
       }
     }
     
-    // 5. Combined call chain from all errors
+    // 5. Combined call chain from all errors (Cyan pour section)
     const allFrames = errors.flatMap(e => e.frames);
     const uniqueFrames = this.deduplicateFrames(allFrames);
-    const callChainSection = this.formatCallChain(uniqueFrames);
+    const callChainSection = this.formatCallChainColored(uniqueFrames);
     if (callChainSection) {
       sections.push(callChainSection);
     }
     
-    // 6. Hidden frames summary
-    const hiddenSection = this.formatHiddenFrames(uniqueFrames);
+    // 6. Hidden frames summary (Cyan pour section + Gris pour contenu)
+    const hiddenSection = this.formatHiddenFramesColored(uniqueFrames);
     if (hiddenSection) {
       sections.push(hiddenSection);
     }
@@ -120,6 +132,81 @@ export class AdvancedFormatter {
     }
     
     return `Location:\n  ${this.shortenPath(firstFrame.file)}:${firstFrame.line}`;
+  }
+
+  private formatLocationSectionColored(frames: readonly StackFrame[]): string | null {
+    const firstFrame = frames.find(f => f.type === 'app');
+    if (!firstFrame || !firstFrame.file || !firstFrame.line) {
+      return null;
+    }
+    
+    const locationPath = `${this.shortenPath(firstFrame.file)}:${firstFrame.line}`;
+    return `${this.theme.section('Location:')}\n  ${this.theme.filePath(locationPath)}`;
+  }
+
+  private formatErrorHeaderPlain(error: Error, frames: readonly StackFrame[]): string {
+    const icon = '✖';
+    const errorName = error.constructor.name;
+    const message = error.message;
+    
+    return `${icon} ${errorName}: ${message}`;
+  }
+
+  private formatCallChainColored(frames: readonly StackFrame[]): string | null {
+    const appFrames = frames.filter(frame => frame.type === 'app');
+    if (appFrames.length === 0) {
+      return null;
+    }
+
+    const chainItems = appFrames.map(frame => {
+      const func = frame.functionName || '<anonymous>';
+      const file = frame.file ? this.shortenPath(frame.file) : '<unknown>';
+      const location = frame.line ? `${frame.line}` : '';
+      
+      const functionPart = this.theme.appFunction(func);
+      const pathPart = this.theme.filePath(`${file}:${location}`);
+      
+      return `  at ${functionPart} (${pathPart})`;
+    });
+
+    return `${this.theme.section('Call chain (async):')}\n${chainItems.join('\n')}`;
+  }
+
+  private formatHiddenFramesColored(frames: readonly StackFrame[]): string | null {
+    // Count hidden frames by type
+    const hiddenCounts = {
+      node: frames.filter(f => f.type === 'node').length,
+      deps: frames.filter(f => f.type === 'deps').length,
+      native: frames.filter(f => f.type === 'native').length
+    };
+
+    const hiddenItems: string[] = [];
+    
+    if (hiddenCounts.node > 0) {
+      hiddenItems.push(`[${hiddenCounts.node} Node internal frames hidden]`);
+    }
+    if (hiddenCounts.deps > 0) {
+      hiddenItems.push(`[${hiddenCounts.deps} Dependency frames hidden]`);  
+    }
+    if (hiddenCounts.native > 0) {
+      hiddenItems.push(`[${hiddenCounts.native} Native frames hidden]`);
+    }
+
+    // Count additional app frames that aren't shown in call chain
+    const appFrames = frames.filter(f => f.type === 'app');
+    const visibleAppFrames = Math.min(appFrames.length, 5); // Assuming we show max 5 in call chain
+    const hiddenAppFrames = Math.max(0, appFrames.length - visibleAppFrames);
+    
+    if (hiddenAppFrames > 0) {
+      hiddenItems.push(`[${hiddenAppFrames} Additional app frames hidden]`);
+    }
+
+    if (hiddenItems.length === 0) {
+      return null;
+    }
+
+    const hiddenText = hiddenItems.map(item => this.theme.internalFrame(item)).join('\n  ');
+    return `${this.theme.section('Stack (hidden frames):')}\n  ${hiddenText}`;
   }
 
   /**
