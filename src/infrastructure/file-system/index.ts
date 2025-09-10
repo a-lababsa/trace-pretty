@@ -1,1 +1,1 @@
-export { CodeFrameExtractor, type CodeFrameOptions, type CodeFrame, type CodeLine } from './code-frame-extractor';
+export { CodeFrameExtractor, type CodeFrame } from './code-frame-extractor';

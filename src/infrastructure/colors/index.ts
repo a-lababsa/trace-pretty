@@ -1,1 +1,1 @@
-export { ColorTheme, terminalTheme, noColorTheme, getTheme, supportsColor } from './ansi-colors';
+export { ColorTheme, getTheme } from './ansi-colors';

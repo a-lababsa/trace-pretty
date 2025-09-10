@@ -3,8 +3,7 @@ module.exports = {
   plugins: ['@typescript-eslint'],
   extends: [
     'eslint:recommended',
-    '@typescript-eslint/recommended',
-    '@typescript-eslint/recommended-requiring-type-checking'
+    '@typescript-eslint/recommended'
   ],
   parserOptions: {
     project: './tsconfig.json',

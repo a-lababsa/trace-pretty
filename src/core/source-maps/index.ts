@@ -1,1 +1,1 @@
-export { SourceMapResolver, type SourceMapOptions } from './source-map-resolver';
+export { SourceMapResolver } from './source-map-resolver';
