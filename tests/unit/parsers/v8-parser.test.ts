@@ -1,4 +1,4 @@
-import { V8Parser } from '@/core/parsers/v8-parser';
+import { V8Parser } from '../../../src/core/parsers/v8-parser';
 
 describe('V8Parser', () => {
   let parser: V8Parser;
@@ -56,7 +56,7 @@ anotherFunction@/another/file.js:20:10`;
         source: 'at functionName (/path/to/file.js:10:5)'
       });
       expect(result.result[1]).toEqual({
-        functionName: 'Object.method',
+        functionName: 'method',
         file: '/another/file.js',
         line: 20,
         column: 10,

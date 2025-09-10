@@ -1,7 +1,28 @@
 # trace-pretty
 
 > **Professional stack trace formatter for JavaScript and TypeScript applications.**  
-> Transform cryptic error traces into readable, actionable debugging information.
+> Transform cryptic error traces into readable, actionable debugging information with chained error support and beautiful terminal colors.
+
+## Installation
+
+```bash
+# Global installation for CLI usage
+npm install -g trace-pretty
+
+# Use without installation
+npx trace-pretty
+
+# Local project dependency
+npm install trace-pretty
+```
+
+## Quick Start
+
+```bash
+# Pipe any command output to trace-pretty
+npm test | trace-pretty
+node app.js 2>&1 | trace-pretty --project-root $(pwd)
+```
 
 [![npm version](https://badge.fury.io/js/trace-pretty.svg)](https://www.npmjs.com/package/trace-pretty)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

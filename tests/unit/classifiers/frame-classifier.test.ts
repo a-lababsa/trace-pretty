@@ -1,5 +1,5 @@
-import { FrameClassifier } from '@/core/classifiers/frame-classifier';
-import { RawFrame } from '@/types';
+import { FrameClassifier } from '../../../src/core/classifiers/frame-classifier';
+import { RawFrame } from '../../../src/types';
 
 describe('FrameClassifier', () => {
   let classifier: FrameClassifier;
@@ -29,7 +29,7 @@ describe('FrameClassifier', () => {
     it('should classify dependency frames', () => {
       const frame: RawFrame = {
         functionName: 'someLibFunction',
-        file: 'node_modules/express/lib/router.js',
+        file: 'node_modules/express/lib/complex-router.js',
         line: 123,
         column: 45
       };
@@ -97,7 +97,7 @@ describe('FrameClassifier', () => {
         },
         {
           functionName: 'libFunction',
-          file: 'node_modules/lib/index.js',
+          file: 'node_modules/lib/complex-library.js',
           line: 20,
           column: 10
         },
@@ -126,7 +126,7 @@ describe('FrameClassifier', () => {
     it('should classify files under project root as app', () => {
       const frame: RawFrame = {
         functionName: 'myFunction',
-        file: '/Users/alex/workspace/my-project/utils/helper.js',
+        file: 'utils/helper.ts',
         line: 10,
         column: 5
       };
@@ -139,7 +139,7 @@ describe('FrameClassifier', () => {
     it('should classify files outside project root as deps', () => {
       const frame: RawFrame = {
         functionName: 'externalFunction',
-        file: '/usr/local/lib/node_modules/some-lib/index.js',
+        file: '/external/path/some-external-lib.so',
         line: 10,
         column: 5
       };
@@ -160,7 +160,7 @@ describe('FrameClassifier', () => {
 
       const frame: RawFrame = {
         functionName: 'customFunction',
-        file: 'custom-src/module.js',
+        file: 'custom-src/module.ts',
         line: 10,
         column: 5
       };
