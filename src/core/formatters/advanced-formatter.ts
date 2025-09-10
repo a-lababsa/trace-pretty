@@ -68,22 +68,23 @@ export class AdvancedFormatter {
     
     // 2. Caused by chain (hierarchical)
     if (errors.length > 1) {
-      sections.push('\nCaused by:');
+      let causedBySection = 'Caused by:';
       for (let i = 1; i < errors.length; i++) {
         const error = errors[i];
         if (!error) continue;
         
         const indent = '  '.repeat(i);
         const prefix = '└─ ';
-        sections.push(`${indent}${prefix}${error.name}: ${error.message}`);
+        causedBySection += `\n${indent}${prefix}${error.name}: ${error.message}`;
       }
+      sections.push(causedBySection);
     }
     
     // 3. Location for primary error
     if (primaryError.frames.length > 0) {
       const locationSection = this.formatLocationSection(primaryError.frames);
       if (locationSection) {
-        sections.push('\n' + locationSection);
+        sections.push(locationSection);
       }
     }
     
@@ -91,7 +92,7 @@ export class AdvancedFormatter {
     if (codeFrames.length > 0 && codeFrames[0]) {
       const codeFrameSection = this.formatCodeFrameSection(primaryError.frames, codeFrames);
       if (codeFrameSection) {
-        sections.push('\n' + codeFrameSection);
+        sections.push(codeFrameSection);
       }
     }
     
@@ -100,16 +101,16 @@ export class AdvancedFormatter {
     const uniqueFrames = this.deduplicateFrames(allFrames);
     const callChainSection = this.formatCallChain(uniqueFrames);
     if (callChainSection) {
-      sections.push('\n' + callChainSection);
+      sections.push(callChainSection);
     }
     
     // 6. Hidden frames summary
     const hiddenSection = this.formatHiddenFrames(uniqueFrames);
     if (hiddenSection) {
-      sections.push('\n' + hiddenSection);
+      sections.push(hiddenSection);
     }
     
-    return sections.join('');
+    return sections.join('\n\n');
   }
 
   private formatLocationSection(frames: readonly StackFrame[]): string | null {
