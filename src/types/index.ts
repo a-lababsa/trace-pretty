@@ -55,10 +55,24 @@ export interface Warning {
   readonly frame?: StackFrame | undefined;
 }
 
+// Error information extracted from stack trace
+export interface ErrorInfo {
+  readonly name: string;
+  readonly message: string;
+  readonly frames: readonly StackFrame[];
+}
+
+// Multiple error support for chained errors
+export interface ChainedError {
+  readonly errors: readonly ErrorInfo[];
+  readonly primaryError: ErrorInfo;
+}
+
 // Format result with metadata
 export interface FormatResult {
   readonly text: string;
   readonly frames: readonly StackFrame[];
+  readonly errors?: readonly ErrorInfo[];
   readonly warnings: readonly Warning[];
   readonly metadata: {
     readonly processingTime: number;

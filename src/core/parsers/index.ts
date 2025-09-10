@@ -110,3 +110,4 @@ export { BaseParser } from './base-parser';
 export { V8Parser } from './v8-parser';
 export { FirefoxParser } from './firefox-parser';
 export { WebKitParser } from './webkit-parser';
+export { ChainedErrorParser } from './chained-error-parser';

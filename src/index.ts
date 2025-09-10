@@ -2,6 +2,7 @@ import { StackTraceParser } from './core/parsers';
 import { FrameClassifier } from './core/classifiers';
 import { SourceMapResolver } from './core/source-maps';
 import { AdvancedFormatter } from './core/formatters';
+import { ChainedErrorParser } from './core/parsers/chained-error-parser';
 import { CodeFrameExtractor } from './infrastructure/file-system';
 import { FormatOptions, FormatResult } from './types';
 
@@ -13,6 +14,7 @@ export class TracePretty {
   private classifier: FrameClassifier;
   private sourceMapResolver: SourceMapResolver;
   private formatter: AdvancedFormatter;
+  private chainedErrorParser: ChainedErrorParser;
   private codeExtractor: CodeFrameExtractor;
 
   constructor(private options: FormatOptions = {}) {
@@ -20,6 +22,7 @@ export class TracePretty {
     this.classifier = new FrameClassifier({}, options.projectRoot);
     this.sourceMapResolver = new SourceMapResolver({ enabled: !options.fast });
     this.formatter = new AdvancedFormatter(options);
+    this.chainedErrorParser = new ChainedErrorParser();
     this.codeExtractor = new CodeFrameExtractor({
       contextLines: typeof options.codeFrame === 'number' ? Math.floor(options.codeFrame / 2) : 3,
       showLineNumbers: true,
@@ -44,6 +47,12 @@ export class TracePretty {
     } else {
       traceString = trace.stack || trace.message;
       error = trace;
+    }
+
+    // Check for chained errors first
+    const chainedErrors = this.chainedErrorParser.parseChainedErrors(traceString);
+    if (chainedErrors && chainedErrors.errors.length > 1) {
+      return this.formatChainedErrors(chainedErrors, startTime);
     }
     
     // Parse raw stack trace
@@ -112,6 +121,40 @@ export class TracePretty {
   clearCaches(): void {
     this.sourceMapResolver.clearCache();
     this.codeExtractor.clearCache();
+  }
+
+  /**
+   * Format chained errors using the advanced formatter
+   */
+  private async formatChainedErrors(chainedErrors: import('./types').ChainedError, startTime: number): Promise<FormatResult> {
+    const primaryError = chainedErrors.primaryError;
+    
+    // Extract code frame for primary error
+    let codeFrames: readonly (import('./infrastructure/file-system').CodeFrame | null)[] = [];
+    if (this.options.codeFrame !== false && !this.options.fast && primaryError.frames.length > 0) {
+      codeFrames = await this.codeExtractor.extractFrames(primaryError.frames);
+    }
+    
+    // Format using the advanced formatter
+    const formattedText = this.formatter.formatChainedErrors(
+      chainedErrors.errors,
+      codeFrames
+    );
+    
+    const processingTime = performance.now() - startTime;
+    const allFrames = chainedErrors.errors.flatMap(e => e.frames);
+    
+    return {
+      text: formattedText,
+      frames: allFrames,
+      errors: chainedErrors.errors,
+      warnings: [],
+      metadata: {
+        processingTime,
+        sourceMapsResolved: 0,
+        sourceMapsTotal: 0
+      }
+    };
   }
 
   /**

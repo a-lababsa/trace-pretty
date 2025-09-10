@@ -1,12 +1,8 @@
+#!/usr/bin/env ts-node
+
 import { TracePretty } from '../src/index';
 
-async function main() {
-  const fastTest = new TracePretty({
-    projectRoot: '/Users/alex/workspace/app',
-    fast: true
-  });
-  
-  const fastResult = await fastTest.format(`Logged Error: Failed to fetch posts for user
+const complexTrace = `Logged Error: Failed to fetch posts for user
 Stack trace: AppError: Failed to fetch posts for user
     at getPostsForUser (/Users/alex/projet/services/post.service.ts:13:15)
     at async main (/Users/alex/projet/app.ts:6:9)
@@ -29,8 +25,26 @@ Stack trace: AppError: Error re-emitted by logger
     at main (/Users/alex/projet/app.ts:9:9)
     at processTicksAndRejections (node:internal/process/task_queues:95:5)
 Caused by: AppError: Failed to fetch posts for user
-    at getPostsForUser (/Users/alex/projet/services/post.service.ts:13:15)`);
- console.log(fastResult.text)
+    at getPostsForUser (/Users/alex/projet/services/post.service.ts:13:15)`;
+
+async function testComplexTrace() {
+  console.log('🧪 Testing Complex Chained Error Stack Trace');
+  console.log('=' .repeat(60));
+  
+  const tracePretty = new TracePretty({
+    projectRoot: '/Users/alex/projet',
+    codeFrame: 2
+  });
+  
+  const result = await tracePretty.format(complexTrace);
+  console.log(result.text);
+  
+  console.log('\n📊 Analysis:');
+  console.log(`✅ Processing time: ${result.metadata.processingTime.toFixed(2)}ms`);
+  console.log(`✅ Total frames: ${result.frames.length}`);
+  console.log(`✅ App frames: ${result.frames.filter(f => f.type === 'app').length}`);
+  console.log(`✅ Node frames: ${result.frames.filter(f => f.type === 'node').length}`);
+  console.log(`✅ Warnings: ${result.warnings.length}`);
 }
 
-main().catch(console.error);
+testComplexTrace().catch(console.error);
