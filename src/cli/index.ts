@@ -54,7 +54,7 @@ async function readFile(filePath: string): Promise<string> {
   return fs.readFile(filePath, 'utf8');
 }
 
-async function main() {
+async function main(): Promise<void> {
   const argv = await yargs.default(hideBin(process.argv))
     .usage('Usage: $0 [options]')
     .option('fast', {
@@ -107,7 +107,7 @@ async function main() {
     }
 
     // Initialize trace-pretty with options
-    const options: any = {};
+    const options: { fast?: boolean; projectRoot?: string; codeFrame?: number | false } = {};
     if (argv.fast !== undefined) options.fast = argv.fast;
     if (argv.projectRoot !== undefined) options.projectRoot = argv.projectRoot;
     if (argv.codeFrame !== undefined) options.codeFrame = argv.codeFrame === false ? false : (argv.codeFrame || 3);
